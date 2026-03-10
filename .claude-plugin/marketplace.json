@@ -1,16 +1,21 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "product-builders",
   "description": "Tools for founders, product leaders, and innovators building in the age of AI",
-  "type": "plugin-marketplace",
+  "owner": {
+    "name": "Bruno Pais",
+    "email": "bruno.pais88@gmail.com"
+  },
   "plugins": [
     {
       "name": "product-moat",
       "description": "Interactive AI moat assessment that challenges you to pressure-test your product defensibility",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/bpais88/product-moat",
-        "ref": "main"
-      }
+      "version": "1.0.0",
+      "author": {
+        "name": "Bruno Pais"
+      },
+      "source": "./plugins/product-moat",
+      "category": "productivity"
     }
   ]
 }

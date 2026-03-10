@@ -1,0 +1,8 @@
+{
+  "name": "product-moat",
+  "description": "Interactive AI moat assessment that challenges product leaders to pressure-test their defensibility across compound intelligence, service-as-software, and prescriptive data.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Bruno Pais"
+  }
+}
