@@ -1,0 +1,16 @@
+{
+  "name": "product-builders",
+  "description": "Tools for founders, product leaders, and innovators building in the age of AI",
+  "type": "plugin-marketplace",
+  "plugins": [
+    {
+      "name": "product-moat",
+      "description": "Interactive AI moat assessment that challenges you to pressure-test your product defensibility",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/bpais88/product-moat",
+        "ref": "main"
+      }
+    }
+  ]
+}
