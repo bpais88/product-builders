@@ -11,13 +11,13 @@ A Claude Code plugin marketplace for founders, product leaders, and innovators b
 Open your terminal and run:
 
 ```bash
-claude plugin marketplace add https://raw.githubusercontent.com/bpais88/product-builders/main/marketplace.json
+claude plugin marketplace add https://github.com/bpais88/product-builders
 ```
 
 ### Step 2: Install a plugin
 
 ```bash
-claude plugin install product-moat
+claude plugin install product-moat@product-builders
 ```
 
 ### Step 3: Use it
