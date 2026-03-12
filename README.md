@@ -1,45 +1,41 @@
 # product-builders
 
-A Claude Code plugin marketplace for founders, product leaders, and innovators building in the age of AI.
+A collection of Claude Code plugins for founders, product leaders, and innovators building in the age of AI.
 
----
-
-## Quick Start
-
-### Step 1: Add the marketplace
-
-Open your terminal and run:
-
-```bash
-claude plugin marketplace add https://github.com/bpais88/product-builders
-```
-
-### Step 2: Install a plugin
-
-```bash
-claude plugin install product-moat@product-builders
-```
-
-### Step 3: Use it
-
-Launch Claude Code and type:
-
-```
-/product-moat:moat-interview
-```
-
-That's it. You'll be walked through an interactive assessment of your product's defensibility.
+Each plugin lives in its own folder under `plugins/` and can be installed independently. Browse the list below, pick what's useful, and get to work.
 
 ---
 
 ## Available Plugins
 
-| Plugin | Description |
-|--------|-------------|
-| **product-moat** | Interactive AI moat assessment — pressure-test your defensibility across compound intelligence, service-as-software, and prescriptive data |
+| Plugin | What it does | Install |
+|--------|-------------|---------|
+| [**product-moat**](plugins/product-moat/) | Interactive AI moat assessment — pressure-test your defensibility across compound intelligence, service-as-software, and prescriptive data | `claude plugin install product-moat@product-builders` |
+
+More plugins coming soon.
+
+---
+
+## Quick Start
+
+### 1. Add the marketplace
+
+```bash
+claude plugin marketplace add https://github.com/bpais88/product-builders
+```
+
+### 2. Install a plugin
+
+```bash
+claude plugin install <plugin-name>@product-builders
+```
+
+### 3. Use it
+
+Each plugin comes with its own slash commands. Check the plugin's README for usage details.
 
 ---
 
 ## Contributing
 
-Want to add a plugin to this marketplace? Open a PR adding your plugin to `marketplace.json`.
+Want to add a plugin to this marketplace? Open a PR adding your plugin folder under `plugins/` and updating `marketplace.json`.

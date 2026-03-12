@@ -30,7 +30,8 @@ Most AI products have no real moat. This tool helps you find out if yours does.
 ## Install
 
 ```bash
-claude plugin install https://github.com/YOUR_USERNAME/product-moat
+claude plugin marketplace add https://github.com/bpais88/product-builders
+claude plugin install product-moat@product-builders
 ```
 
 ## Usage
