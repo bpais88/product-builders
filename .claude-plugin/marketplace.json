@@ -16,6 +16,16 @@
       },
       "source": "./plugins/product-moat",
       "category": "productivity"
+    },
+    {
+      "name": "demo-recorder",
+      "description": "Narrated screen demos of any web app. ElevenLabs TTS voiceover, agent-browser capture, ffmpeg stitching, optional Remotion animated intros.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bruno Pais"
+      },
+      "source": "./plugins/demo-recorder",
+      "category": "productivity"
     }
   ]
 }

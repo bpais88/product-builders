@@ -1,0 +1,7 @@
+node_modules/
+.env
+demos/output/
+remotion/public/voiceover/
+*.mp4
+*.webm
+*.mp3

@@ -11,6 +11,7 @@ Each plugin lives in its own folder under `plugins/` and can be installed indepe
 | Plugin | What it does | Install |
 |--------|-------------|---------|
 | [**product-moat**](plugins/product-moat/) | Interactive AI moat assessment — pressure-test your defensibility across compound intelligence, service-as-software, and prescriptive data | `claude plugin install product-moat@product-builders` |
+| [**demo-recorder**](plugins/demo-recorder/) | Narrated screen demos of any web app — ElevenLabs voiceover + agent-browser capture + ffmpeg stitch, with optional Remotion animated intros | `claude plugin install demo-recorder@product-builders` |
 
 More plugins coming soon.
 
