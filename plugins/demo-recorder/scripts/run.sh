@@ -18,6 +18,12 @@ if [ ! -d "$ROOT/node_modules" ]; then
   exit 1
 fi
 
+# Keep the TTS cache outside the plugin dir — that dir is replaced on every plugin
+# update, and a discarded cache means paying ElevenLabs again for identical narration.
+# One canonical location (not $DATA), so a skill run and a manual CLI run share it.
+export DEMO_RECORDER_CACHE_DIR="${DEMO_RECORDER_CACHE_DIR:-$HOME/.demo-recorder/tts-cache}"
+mkdir -p "$DEMO_RECORDER_CACHE_DIR"
+
 # Look for the key in the plugin data dir first, then the stable per-user fallback.
 # (Claude Code picks the data dir path; ~/.demo-recorder works for a manual/CLI run too.)
 for env_file in "$DATA/.env" "$HOME/.demo-recorder/.env"; do

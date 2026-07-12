@@ -20,7 +20,7 @@
     {
       "name": "demo-recorder",
       "description": "Narrated screen demos of any web app. ElevenLabs TTS voiceover, agent-browser capture, ffmpeg stitching, optional Remotion animated intros.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "author": {
         "name": "Bruno Pais"
       },

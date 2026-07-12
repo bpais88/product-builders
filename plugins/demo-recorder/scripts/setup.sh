@@ -25,5 +25,9 @@ elif [ ! -f "$ENV_FILE" ]; then
   echo "created $ENV_FILE — add your ELEVENLABS_API_KEY to it"
 fi
 
-echo "deps: $ROOT/node_modules"
-echo "env:  $ENV_FILE"
+CACHE_DIR="${DEMO_RECORDER_CACHE_DIR:-$HOME/.demo-recorder/tts-cache}"
+mkdir -p "$CACHE_DIR"
+
+echo "deps:  $ROOT/node_modules"
+echo "env:   $ENV_FILE"
+echo "cache: $CACHE_DIR"

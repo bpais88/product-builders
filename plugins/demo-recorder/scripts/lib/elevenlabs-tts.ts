@@ -1,7 +1,7 @@
 import { writeFileSync, existsSync, copyFileSync, mkdirSync } from 'node:fs'
 import { execSync } from 'node:child_process'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
+import { homedir } from 'node:os'
 import { createHash } from 'node:crypto'
 import type { DemoScene, AudioSegment } from '../types.js'
 
@@ -12,7 +12,13 @@ const OUTPUT_FORMAT = 'mp3_44100_128'
 // Persistent TTS cache (keyed by model+format+voice+text). Survives across runs and
 // projects, so re-recording the same narration is free and instant. Disable with
 // DEMO_RECORDER_NO_TTS_CACHE=1.
-const CACHE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.tts-cache')
+//
+// It must NOT live under the plugin directory: Claude Code replaces that wholesale on
+// every plugin update, which would silently discard the cache and re-bill every line to
+// ElevenLabs. run.sh sets DEMO_RECORDER_CACHE_DIR; the homedir path is the fallback for
+// a direct `tsx record-demo.ts` invocation.
+const CACHE_DIR =
+  process.env.DEMO_RECORDER_CACHE_DIR ?? join(homedir(), '.demo-recorder', 'tts-cache')
 const CACHE_DISABLED = process.env.DEMO_RECORDER_NO_TTS_CACHE === '1'
 
 function cacheKeyFor(text: string, voiceId: string): string {

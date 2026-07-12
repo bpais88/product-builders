@@ -210,7 +210,7 @@ Flags:
 - `--no-trim` — keep the raw boot pre-roll / tail (see auto-trim below).
 
 Built-in behaviors (no config needed):
-- **TTS cache** — narration is cached by `hash(model + voice + text)` under `${CLAUDE_PLUGIN_ROOT}/.tts-cache/`. Re-recording the same lines is free and instant (look for `(cached)` / `♻️` in Phase 1). Set `DEMO_RECORDER_NO_TTS_CACHE=1` to bypass.
+- **TTS cache** — narration is cached by `hash(model + voice + text)` under `~/.demo-recorder/tts-cache/` — deliberately outside the plugin dir, which is replaced on every plugin update. Re-recording the same lines is free and instant (look for `(cached)` / `♻️` in Phase 1). Set `DEMO_RECORDER_NO_TTS_CACHE=1` to bypass.
 - **Auto-trim** — the recorder captures the app booting before scene 1 and a tail after the last line; the orchestrator trims to a small pad around the narration using the measured scene offsets (logged as `✂️ Auto-trimmed …`). Disable with `--no-trim`.
 
 After running, offer to play the result or share the file path.
