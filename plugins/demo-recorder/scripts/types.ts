@@ -30,6 +30,33 @@ export interface BrowserContext {
   sleep(ms: number): Promise<void>
 }
 
+/** How the recorder detects that a login already succeeded (or pre-exists). */
+export interface AuthReadyCheck {
+  /** Glob/substring the authenticated URL should match, e.g. '**\/dashboard'. */
+  urlMatches?: string
+  /** A selector that is only visible once authenticated, e.g. '[data-testid=user-menu]'. */
+  selector?: string
+}
+
+/**
+ * Product-agnostic auth. The HUMAN logs in once (SSO, MFA, anything); the recorder
+ * persists that session and reuses it on every later run. No per-product auth code.
+ */
+export interface AuthConfig {
+  /** Persistent browser profile dir (recommended). The logged-in session is stored
+   *  here and survives across runs AND into the fresh recording context. */
+  profile?: string
+  /** Portable Playwright storageState JSON (cookies + localStorage). Loaded via --state
+   *  when present; saved here after a successful interactive login when absent. */
+  state?: string
+  /** Page to open for an interactive login when no valid session is detected. */
+  loginUrl?: string
+  /** How to detect an existing/successful login, so the prompt is skipped when already in. */
+  ready?: AuthReadyCheck
+  /** Seconds to wait for the human to finish logging in. Default 240. */
+  loginTimeoutSec?: number
+}
+
 export interface DemoConfig {
   name: string
   baseUrl: string
@@ -37,6 +64,8 @@ export interface DemoConfig {
   outputDir: string
   scenes: DemoScene[]
   viewport?: Viewport
+  /** Optional product-agnostic auth — human logs in once, session is reused. */
+  auth?: AuthConfig
   setup?: (ctx: BrowserContext) => Promise<void>
   teardown?: (ctx: BrowserContext) => Promise<void>
   /** Optional Remotion-rendered intro prepended before the browser recording. */

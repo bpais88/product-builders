@@ -1,10 +1,23 @@
 ---
 name: demo-recorder
 description: Record narrated screen demos of any web app using ElevenLabs TTS voiceover and agent-browser capture. Use when the user asks to "record a demo", "create a demo video", "make a narrated screencast", "record a product demo", "make a video walkthrough", or "generate a demo with voice". Handles the full pipeline — requirements gathering, scene drafting, browser automation, audio generation, and video stitching into an .mp4.
-allowed-tools: Bash(npx:*), Bash(agent-browser:*), Bash(ffmpeg:*), Bash(ffprobe:*), Bash(which:*), Bash(pkill:*), Bash(mkdir:*), Bash(ls:*), Read, Write, Edit, Glob, Grep, AskUserQuestion
+allowed-tools: Bash(bash:*), Bash(npm:*), Bash(npx:*), Bash(agent-browser:*), Bash(ffmpeg:*), Bash(ffprobe:*), Bash(which:*), Bash(test:*), Bash(pkill:*), Bash(mkdir:*), Bash(ls:*), Read, Write, Edit, Glob, Grep, AskUserQuestion
 ---
 
 # Demo Recorder
+
+**On invocation, FIRST print this cover to the terminal verbatim (inside a fenced code block so the monospace alignment holds), then proceed:**
+
+```
+  ╭────────────────────────────────────────────────────────╮
+  │                                                        │
+  │  ▐█▌  D E M O   R E C O R D E R                        │
+  │  ▐█▌                                                   │
+  │  ▐█▌  narrated product demos, end to end               │
+  │       ElevenLabs · agent-browser · ffmpeg              │
+  │                                                        │
+  ╰────────────────────────────────────────────────────────╯
+```
 
 Produce narrated `.mp4` screen recordings of any web app. ElevenLabs generates voiceover, `agent-browser` drives the browser and captures video, `ffmpeg` stitches them together.
 
@@ -30,13 +43,22 @@ Run these checks first. If any fails, STOP and tell the user what to install.
 which ffmpeg     # → needs: brew install ffmpeg
 which ffprobe    # → comes with ffmpeg
 which agent-browser  # → agent-browser CLI must be installed
-test -d ~/.claude/skills/demo-recorder/node_modules && echo "ok" || echo "MISSING"
-# If MISSING: cd ~/.claude/skills/demo-recorder && npm install
-test -f ~/.claude/skills/demo-recorder/.env || echo "MISSING .env with ELEVENLABS_API_KEY"
+# agent-browser ≥0.27 is required for native 1080p recording + the daemon/auth model.
+# Older versions cap recording at 720p and the --profile auth won't apply.
+agent-browser --version  # if < 0.27.0 → STRONGLY recommend: npm install -g agent-browser@latest
 
-# Only if the demo will use a Remotion animated intro:
-test -d ~/.claude/skills/demo-recorder/remotion/node_modules && echo "ok" || echo "MISSING remotion deps"
-# If MISSING: cd ~/.claude/skills/demo-recorder/remotion && npm install
+# Installs deps (idempotent) and creates the .env if absent. Safe to re-run every time.
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh" "${CLAUDE_PLUGIN_DATA}"
+```
+
+`setup.sh` prints the path of the `.env` it uses. If `ELEVENLABS_API_KEY` is still the
+placeholder there, STOP and ask the user for their key, then write it into that file — it
+lives outside the plugin directory, so it survives plugin updates and never enters git.
+
+```bash
+# Only if the demo will use a Remotion animated intro (heavy — ~500MB, install lazily):
+test -d "${CLAUDE_PLUGIN_ROOT}/remotion/node_modules" && echo "ok" || echo "MISSING remotion deps"
+# If MISSING: (cd "${CLAUDE_PLUGIN_ROOT}/remotion" && npm install)
 ```
 
 ## The 3-round requirements flow
@@ -104,6 +126,7 @@ Ask these 7 questions in a SINGLE AskUserQuestion call:
 3. **Key takeaway + CTA** — "What's the ONE thing you want viewers to remember? Any specific action they should take after watching?"
 4. **Data safety check** — ONLY if privacy ≠ internal in Round 1:
    "Is the data currently visible in the app safe to show on this channel? If not, what needs to be swapped or redacted before we record?"
+5. **Auth + environment** — "What URL are we recording, and how do you log in? I'll open the login page once so you can sign in (SSO/MFA fine) — after that it's reused automatically. Is this a single-page app (client-side routing) or classic multi-page?" Use the answers to set the `auth` block (profile + `ready`) and pick navigation style. For an SPA, navigate scenes via `pushState` and pin recording to the entry URL — `scene.url` does a full page load that breaks client routing.
 
 ### Round 3 — draft & approve
 
@@ -129,10 +152,17 @@ const config = {
   outputDir: 'demos/output',
   viewport: 'desktop', // or 'mobile-portrait' | 'tablet' | 'square' | { width, height }
 
-  // Project-specific pre-recording setup (auth, data seeding, etc.).
+  // Preferred auth: human logs in once, session reused. See "Auth" below.
+  auth: {
+    profile: '~/.demo-recorder/profiles/<product>',
+    loginUrl: '<login-url>',
+    ready: { urlMatches: '**/dashboard' }, // or { selector: '...' }
+  },
+
+  // Optional pre-recording setup (data seeding, or simple local-token auth).
   // Runs after browser opens, before `record start`.
   setup: async (ctx) => {
-    // See "Auth recipes" below
+    // See "Auth recipes (fallback)" below
   },
 
   scenes: [
@@ -153,18 +183,35 @@ export default config
 If the user wants types in their editor, they can add:
 
 ```ts
-/** @type {import('/Users/<you>/.claude/skills/demo-recorder/scripts/types').DemoConfig} */
+/** @type {import('${CLAUDE_PLUGIN_ROOT}/scripts/types').DemoConfig} */
 ```
 
 …but it's optional — the runtime shape is all that matters.
 
 ## Running
 
+`run.sh` loads the API key from the `.env` and resolves the recorder from the plugin dir,
+so it works from whatever project directory the user is standing in.
+
 ```bash
-npx tsx ~/.claude/skills/demo-recorder/scripts/record-demo.ts demos/<demo-name>.ts
+# Validate first (cheap): drive every scene + screenshot it, NO audio, NO recording.
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/run.sh" --data "${CLAUDE_PLUGIN_DATA}" demos/<demo-name>.ts --dry-run
+
+# Record for real.
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/run.sh" --data "${CLAUDE_PLUGIN_DATA}" demos/<demo-name>.ts
 ```
 
-Run this from the project root. Output: `<outputDir>/<demo-name>-narrated.mp4`.
+Run from the project root. Output: `<outputDir>/<demo-name>-narrated.mp4`.
+
+**Always `--dry-run` first on a new/changed demo.** It opens the browser, runs auth + setup, navigates each scene, and writes `<outputDir>/dryrun/<scene>.png` plus a per-scene URL and word-count duration estimate — so you catch auth/routing/selector breakage before spending any ElevenLabs credits. Review the screenshots, then record.
+
+Flags:
+- `--dry-run` — validate only (no TTS, no recording, no stitch).
+- `--no-trim` — keep the raw boot pre-roll / tail (see auto-trim below).
+
+Built-in behaviors (no config needed):
+- **TTS cache** — narration is cached by `hash(model + voice + text)` under `${CLAUDE_PLUGIN_ROOT}/.tts-cache/`. Re-recording the same lines is free and instant (look for `(cached)` / `♻️` in Phase 1). Set `DEMO_RECORDER_NO_TTS_CACHE=1` to bypass.
+- **Auto-trim** — the recorder captures the app booting before scene 1 and a tail after the last line; the orchestrator trims to a small pad around the narration using the measured scene offsets (logged as `✂️ Auto-trimmed …`). Disable with `--no-trim`.
 
 After running, offer to play the result or share the file path.
 
@@ -244,7 +291,7 @@ const config = {
 
 When `intro` is present, the orchestrator:
 
-1. Generates ElevenLabs TTS for each intro scene → `~/.claude/skills/demo-recorder/remotion/public/voiceover/<demo-name>/<scene-id>.mp3`
+1. Generates ElevenLabs TTS for each intro scene → `${CLAUDE_PLUGIN_ROOT}/remotion/public/voiceover/<demo-name>/<scene-id>.mp3`
 2. Writes a props JSON and runs `npx remotion render IntroSeries intro.mp4 --props=<json>` inside the `remotion/` dir.
 3. Remotion uses `calculateMetadata` to size the composition from the audio durations.
 4. Runs the regular browser recording + stitch to produce the main mp4.
@@ -257,11 +304,37 @@ When `intro` is present, the orchestrator:
 - Narration can be shorter than the headline's reading time — the card holds until the audio finishes.
 - For silent title cards (no narration), set `narration: ''` and provide `holdSec` (default 3s).
 
-## Auth recipes (for `setup`)
+## Auth — the human logs in once, the skill reuses it (preferred, product-agnostic)
 
-Pick the one that matches your app. These are examples, not special cases — `setup` is just a function with a `BrowserContext`.
+**This is the default path for any real product** (SSO, MFA, cookies — anything). The skill NEVER types credentials. You add an `auth` block; on the first run it opens the login page, the human logs in, and the session is persisted to a browser **profile** and reused on every later run — including inside the fresh recording context (verified). No per-product auth code.
 
-### A. localStorage token injection
+```ts
+const config = {
+  // ...name, baseUrl, voiceId, etc.
+  auth: {
+    profile: '~/.demo-recorder/profiles/acme',   // session persisted here, reused across runs
+    loginUrl: 'https://app.acme.com/login',       // opened only when no session is detected
+    ready: { urlMatches: '**/dashboard' },        // OR { selector: '[data-testid=user-menu]' }
+    // state: '~/.demo-recorder/acme.json',        // optional: also export a portable storageState JSON
+    // loginTimeoutSec: 240,                        // how long to wait for the human (default 240)
+  },
+}
+```
+
+How it runs (handled by the orchestrator — no code needed from you):
+1. Kills the agent-browser daemon and relaunches it with `--profile` (the daemon ignores `--profile` if already running, so this restart is required).
+2. Probes `ready`. **Already logged in** → records immediately. **Not logged in** → opens `loginUrl`, prints *"Please log in…"*, and polls until `ready` matches (the human does SSO/MFA), then continues. If `state` is set, a portable `storageState` JSON is saved too.
+3. Because the profile persists, the human is only prompted on first run or when the session expires.
+
+**Tell the user up front:** the first recording of a new product will pause for them to log in in the opened browser window; after that it's hands-free. Always set `ready` (a post-login URL glob or a logged-in-only selector) so success is detected reliably.
+
+`profile` vs `state`: `profile` (a dir) is simplest and is what survives into the recording context — use it by default. `state` (a single JSON of cookies + localStorage) is portable across machines/CI — use it to share a captured session.
+
+## Auth recipes (for `setup`) — fallback for simple/local cases
+
+Only when a persistent profile is overkill — e.g. a local dev token or a dev-auth bypass. `setup` runs BEFORE `record start`, which spins a fresh context. **On agent-browser ≥0.27 that fresh context inherits cookies but NOT runtime localStorage** — so a localStorage token set in `setup` will NOT authenticate the recording. For localStorage-token apps either (a) set the token inside the recording, in scene 1's actions; or (b) use a boot-time bypass; cookie-based auth survives, so prefer the profile path above. `setup` is a function with a `BrowserContext`.
+
+### A. localStorage token injection ⚠️ does NOT carry into the recording on ≥0.27 — inject in scene 1 instead, or use cookies/profile
 
 ```ts
 setup: async ({ open, eval: exec, sleep }) => {
@@ -329,11 +402,14 @@ If **Internal**, skip these steps.
 
 | Symptom | Fix |
 |---|---|
-| `ELEVENLABS_API_KEY is not set` | Add to `~/.claude/skills/demo-recorder/.env` or shell env |
+| `ELEVENLABS_API_KEY is not set` | Add to `${CLAUDE_PLUGIN_DATA}/.env` or shell env |
 | `ffprobe: command not found` | `brew install ffmpeg` |
 | `agent-browser: command not found` | Install agent-browser CLI |
 | Recording not found | Check headed browser opens; check agent-browser logs |
 | Audio out of sync | Adjust `pauseBeforeMs` / `pauseAfterMs` per scene |
 | Narration sounds flat / robotic | Switch to `eleven_multilingual_v2` model; or pick a different voice |
-| Viewport wrong / cut off | Viewport is set at browser open; if the flag isn't honoured, the skill falls back to `window.resizeTo` (best-effort). A hard-locked viewport requires a future agent-browser upgrade. |
-| Ghost browser windows after crash | `pkill -f "Google Chrome for Testing"` — the orchestrator does this on next run |
+| Recorded at wrong resolution (e.g. 720p) | agent-browser **≥0.27** records at the active viewport — the orchestrator `set viewport`s before recording, so you get native 1920×1080. On **older agent-browser (<0.10)** recording was hard-capped at 1280×720. `agent-browser --version`; upgrade with `npm i -g agent-browser@latest`. |
+| `--profile` / `--state` ignored ("daemon already running") | The orchestrator kills the daemon binary before launch. If stale: `agent-browser close --all`; hard reset `pkill -f "agent-browser/bin/agent-browser"`. Diagnose with `agent-browser doctor`. |
+| Auth works in setup but recording shows logged-out | On ≥0.27 the record context inherits **cookies** (via `--profile`/`--state`) but **not** runtime localStorage. For localStorage-token apps, authenticate inside the recording (scene 1) or via a boot-time bypass. |
+| Ghost browser windows after crash | `agent-browser close --all`; the orchestrator also `pkill`s Chrome + the daemon binary on next run |
+| Diagnose anything | `agent-browser doctor` (env, Chrome, daemons, version, providers, network) |

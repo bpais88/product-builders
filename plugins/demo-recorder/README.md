@@ -11,34 +11,27 @@ claude plugin install demo-recorder@product-builders
 
 ## Prerequisites
 
-After install, in the plugin's install directory:
+Two things must be on your `$PATH` before the skill will run: **ffmpeg** (`brew install ffmpeg`, which also brings `ffprobe`) and the **agent-browser** CLI, version `0.27.0` or newer — older versions cap recording at 720p.
+
+Everything else bootstraps itself. The skill runs `scripts/setup.sh` on invocation: it installs the Node dependencies into the plugin directory and creates an `.env` in the plugin's **data directory**, then asks you for your ElevenLabs API key. The key lives outside the plugin directory on purpose — plugin dirs are replaced wholesale on update, the data dir survives, and the key never enters git.
+
+Remotion (for optional animated intros) is ~500 MB and is installed lazily, only if a demo actually uses one:
 
 ```bash
-# 1. ffmpeg + ffprobe
-brew install ffmpeg
-
-# 2. Node deps (run in the installed plugin path)
-cd "$(claude plugin path demo-recorder@product-builders)"
-npm install
-( cd remotion && npm install )    # only if you plan to use animated intros
-
-# 3. ElevenLabs key
-cp .env.example .env
-# then edit .env to set ELEVENLABS_API_KEY
+cd "$(claude plugin path demo-recorder@product-builders)/remotion" && npm install
 ```
-
-`agent-browser` CLI must also be installed and on your `$PATH`.
-
-> **Heads-up — pre-1.0 caveat.** This release (`0.1.0`) still hardcodes a couple of `~/.claude/skills/demo-recorder/...` paths inside `SKILL.md` from when the skill lived as a standalone, local skill rather than a marketplace plugin. They are flagged for replacement with `${CLAUDE_PLUGIN_ROOT}` in a follow-up. If the harness drops you into the wrong directory, run the `npx tsx` command from the plugin install path printed by `claude plugin path demo-recorder@product-builders`.
 
 ## Use
 
 Just ask Claude: **"record a demo of X"** — the skill runs a short 3-round questionnaire (intent, channel, duration, voice, viewport, privacy, language → audience and focus → draft scene table for approval), writes a scene file to `demos/<name>.ts` in your current project, and renders it.
 
-Manual invocation:
+Manual invocation, from any project directory:
 
 ```bash
-npx tsx scripts/record-demo.ts demos/<demo-name>.ts
+PLUGIN="$(claude plugin path demo-recorder@product-builders)"
+bash "$PLUGIN/scripts/setup.sh"                             # first run only
+bash "$PLUGIN/scripts/run.sh" demos/<demo-name>.ts --dry-run  # validate: screenshots, no audio
+bash "$PLUGIN/scripts/run.sh" demos/<demo-name>.ts            # record for real
 ```
 
 Output: `<outputDir>/<demo-name>-narrated.mp4` (H.264 + AAC).

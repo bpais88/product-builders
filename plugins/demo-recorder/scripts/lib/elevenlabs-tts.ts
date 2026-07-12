@@ -1,11 +1,23 @@
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, existsSync, copyFileSync, mkdirSync } from 'node:fs'
 import { execSync } from 'node:child_process'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createHash } from 'node:crypto'
 import type { DemoScene, AudioSegment } from '../types.js'
 
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1'
 const MODEL_ID = process.env.ELEVENLABS_MODEL_ID ?? 'eleven_flash_v2_5'
 const OUTPUT_FORMAT = 'mp3_44100_128'
+
+// Persistent TTS cache (keyed by model+format+voice+text). Survives across runs and
+// projects, so re-recording the same narration is free and instant. Disable with
+// DEMO_RECORDER_NO_TTS_CACHE=1.
+const CACHE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.tts-cache')
+const CACHE_DISABLED = process.env.DEMO_RECORDER_NO_TTS_CACHE === '1'
+
+function cacheKeyFor(text: string, voiceId: string): string {
+  return createHash('sha256').update(`${MODEL_ID}|${OUTPUT_FORMAT}|${voiceId}|${text}`).digest('hex')
+}
 
 function getApiKey(): string {
   const key = process.env.ELEVENLABS_API_KEY
@@ -13,7 +25,14 @@ function getApiKey(): string {
   return key
 }
 
-export async function generateSpeechFile(text: string, voiceId: string, outputPath: string): Promise<void> {
+/** Generate (or reuse cached) speech. Returns true when served from cache. */
+export async function generateSpeechFile(text: string, voiceId: string, outputPath: string): Promise<boolean> {
+  const cachePath = join(CACHE_DIR, `${cacheKeyFor(text, voiceId)}.mp3`)
+  if (!CACHE_DISABLED && existsSync(cachePath)) {
+    copyFileSync(cachePath, outputPath)
+    return true
+  }
+
   const apiKey = getApiKey()
   const response = await fetch(
     `${ELEVENLABS_BASE}/text-to-speech/${voiceId}?output_format=${OUTPUT_FORMAT}`,
@@ -33,6 +52,10 @@ export async function generateSpeechFile(text: string, voiceId: string, outputPa
   }
   const arrayBuffer = await response.arrayBuffer()
   writeFileSync(outputPath, Buffer.from(arrayBuffer))
+  if (!CACHE_DISABLED) {
+    try { mkdirSync(CACHE_DIR, { recursive: true }); copyFileSync(outputPath, cachePath) } catch { /* cache best-effort */ }
+  }
+  return false
 }
 
 export function getAudioDuration(filePath: string): number {
@@ -51,13 +74,16 @@ export async function generateAllSceneAudio(
   outputDir: string
 ): Promise<AudioSegment[]> {
   const segments: AudioSegment[] = []
+  let cachedCount = 0
   for (const scene of scenes) {
     const audioPath = join(outputDir, `${scene.name}.mp3`)
     console.log(`  🎙  Generating audio: ${scene.name}`)
-    await generateSpeechFile(scene.narration, voiceId, audioPath)
+    const fromCache = await generateSpeechFile(scene.narration, voiceId, audioPath)
+    if (fromCache) cachedCount++
     const durationSec = getAudioDuration(audioPath)
-    console.log(`      → ${durationSec.toFixed(1)}s`)
+    console.log(`      → ${durationSec.toFixed(1)}s${fromCache ? ' (cached)' : ''}`)
     segments.push({ sceneName: scene.name, audioPath, durationSec })
   }
+  if (cachedCount) console.log(`  ♻️  ${cachedCount}/${scenes.length} clips served from cache`)
   return segments
 }
