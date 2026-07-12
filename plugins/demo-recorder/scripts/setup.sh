@@ -16,10 +16,14 @@ if [ ! -d "$ROOT/node_modules" ]; then
   (cd "$ROOT" && npm install --silent)
 fi
 
-if [ ! -f "$DATA/.env" ]; then
-  cp "$ROOT/.env.example" "$DATA/.env"
-  echo "created $DATA/.env — add your ELEVENLABS_API_KEY to it"
+ENV_FILE="$DATA/.env"
+if [ ! -f "$ENV_FILE" ] && [ -f "$HOME/.demo-recorder/.env" ]; then
+  ENV_FILE="$HOME/.demo-recorder/.env"      # existing per-user key — reuse, don't clobber
+elif [ ! -f "$ENV_FILE" ]; then
+  cp "$ROOT/.env.example" "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  echo "created $ENV_FILE — add your ELEVENLABS_API_KEY to it"
 fi
 
 echo "deps: $ROOT/node_modules"
-echo "env:  $DATA/.env"
+echo "env:  $ENV_FILE"

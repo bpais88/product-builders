@@ -18,11 +18,16 @@ if [ ! -d "$ROOT/node_modules" ]; then
   exit 1
 fi
 
-if [ -f "$DATA/.env" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  . "$DATA/.env"
-  set +a
-fi
+# Look for the key in the plugin data dir first, then the stable per-user fallback.
+# (Claude Code picks the data dir path; ~/.demo-recorder works for a manual/CLI run too.)
+for env_file in "$DATA/.env" "$HOME/.demo-recorder/.env"; do
+  if [ -f "$env_file" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . "$env_file"
+    set +a
+    break
+  fi
+done
 
 exec "$ROOT/node_modules/.bin/tsx" "$ROOT/scripts/record-demo.ts" "$@"
